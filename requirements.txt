@@ -1,0 +1,2 @@
+docker-registry-core>=2,<3
+oss==0.1.3
