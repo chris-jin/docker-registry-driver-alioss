@@ -8,9 +8,8 @@ Usage
 
 Assuming you have a working docker-registry and oss api setup(you can get it here： http://aliyunecs.oss-cn-hangzhou.aliyuncs.com/OSS_Python_API_20140509.zip).
 
-pip install docker-registry-driver-alioss
-or
-get source code and run python setup.py install
+get source code and run:
+    python setup.py install
 
 Edit your configuration so that storage reads ali oss.
 
