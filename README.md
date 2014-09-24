@@ -13,18 +13,41 @@ get source code and run:
 
 Edit your configuration so that storage reads ali oss.
 
-Options
+Config
 =========
-You may add any of the following to your main docker-registry configuration to further configure it.
-
-
+You may add any of the following to your main docker-registry configuration to further configure it, which is  config/config.yml.
     storage: specify the storage to use, should be alwasy alioss 
     oss_bucket: specify the bucket where you want to store these images for your registry
     oss_accessid: the access id for the oss bucket, which you get from aliyun.com
     oss_accesskey: the access key for the oss bucket, which you get from aliyun.com
+
+example:
+    oss: &oss
+        <<: *common
+        storage: alioss
+        oss_bucket: _env:OSS_BUCKET[:default_value]
+        oss_accessid: _env:OSS_KEY[:your_access_id]
+        oss_accesskey: _env:OSS_SECRET[:your_access_key]
+
+Options
+=========
+When you run docker-registry, you can use the following two methods to configure the storage:
+
+    * if you run docker-registry on your local host, export these configurations if you want to modify the default value in the configured in the config.yml:
+        export SETTINGS_FLAVOR=oss
+        export OSS_BUCKET=docker-registry
+        export OSS_KEY=<your access id>
+        export OSS_SECRET=<your access key>
     
-  example:
-  NA
+    * if you run docker-registry on your docker container, remmeber to specify these settings as cmd args:
+        docker run \
+         -e SETTINGS_FLAVOR=oss \
+         -e OSS_BUCKET=docker-registry \
+         -e OSS_KEY=<your access id> \
+         -e OSS_SECRET=<your access key> \
+         -e SEARCH_BACKEND=sqlalchemy \
+         -p 5000:5000 \
+         registry
     
 License
 =========
