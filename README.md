@@ -8,23 +8,28 @@ Usage
 
 Assuming you have a working docker-registry and oss api setup(you can get it here： http://aliyunecs.oss-cn-hangzhou.aliyuncs.com/OSS_Python_API_20140509.zip).
 
-get source code and run:
+    get source code and run:
     python setup.py install
 
 Edit your configuration so that storage reads ali oss.
 
 Config
 =========
-You may add any of the following to your main docker-registry configuration to further configure it, which is  config/config.yml.
-    storage: specify the storage to use, should be alwasy alioss 
-    oss_bucket: specify the bucket where you want to store these images for your registry
-    oss_accessid: the access id for the oss bucket, which you get from aliyun.com
-    oss_accesskey: the access key for the oss bucket, which you get from aliyun.com
+You should add all the following configurations to your main docker-registry configuration to further configure it, which by default is  config/config.yml.
+    
+    alioss configrations:
+        * storage: specify the storage to use, should be alwasy alioss 
+        * storage_path: specify the path prefix in the oss bucket
+        * oss_bucket: specify the bucket where you want to store these images for your registry
+        * oss_accessid: the access id for the oss bucket, which you get from aliyun.com
+        * oss_accesskey: the access key for the oss bucket, which you get from aliyun.com
 
-example:
+    example <you can copy this example into your config.yml, and modify it accordingly>:
+    
     oss: &oss
         <<: *common
         storage: alioss
+        storage_path: _env:STORAGE_PATH:/devregistry/
         oss_bucket: _env:OSS_BUCKET[:default_value]
         oss_accessid: _env:OSS_KEY[:your_access_id]
         oss_accesskey: _env:OSS_SECRET[:your_access_key]
