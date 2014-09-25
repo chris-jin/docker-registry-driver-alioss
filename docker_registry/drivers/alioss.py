@@ -9,9 +9,6 @@ See http://www.aliyun.com
 """
 
 import os
-import types
-
-import itertools
 import logging
 
 import oss.oss_api as oss
@@ -25,9 +22,9 @@ logger = logging.getLogger(__name__)
 
 
 DEFAUL_OSS_HOST = 'oss.aliyuncs.com'
-DEFAULT_OSS_ACCESSID = '<your_accessid>'
-DEFAULT_OSS_ACCESSKEY = '<your_accesskey>'
-DEFAULT_OSS_BUCKET = 'docker-registry'
+DEFAULT_OSS_ACCESSID = '<your access id>'
+DEFAULT_OSS_ACCESSKEY = '<your access secret>'
+DEFAULT_OSS_BUCKET = '<your oss bucket>'
 DEFAULT_TIME_OUT = 60
 
 class OssCfg(object):
@@ -44,6 +41,8 @@ class Storage(driver.Base):
         self.supports_bytes_range = True
         # Increase buffer size up to 640 Kb
         self.buffer_size = 128 * 1024
+        #another stupid bug, oss api wont write an absolute path('/a/b/c'), neither throws any exception
+        self._rootpath = path if path[0] != '/' else path[1:]
 
         self.osscfg = OssCfg()
         self.osscfg.host = (config.oss_host or DEFAUL_OSS_HOST)
@@ -52,9 +51,20 @@ class Storage(driver.Base):
         self.osscfg.bucket = (config.oss_bucket or DEFAULT_OSS_BUCKET)
         self._oss = oss.OssAPI(self.osscfg.host, self.osscfg.accessid, self.osscfg.accesskey)
 
+    def getfullpath(self, path):
+        res = self._rootpath
+        if not path:
+            res = self._rootpath
+        else:
+            if path.startswith(self._rootpath):
+                res = path
+            else:
+                res = os.path.join(self._rootpath, path)
+        return res
 
     @lru.get
     def get_content(self, path):
+        path = self.getfullpath(path)
         try:
             res = self._oss.get_object(self.osscfg.bucket, path)
             if res.status == 200:
@@ -66,11 +76,14 @@ class Storage(driver.Base):
 
     @lru.set
     def put_content(self, path, content):
+        tmppath = path
+        path = self.getfullpath(path)
         logger.debug("put_content %s %d", path, len(content))
         self._oss.put_object_with_data(self.osscfg.bucket, path, content)
-        return path
+        return tmppath
 
     def stream_write(self, path, fp):
+        path = self.getfullpath(path)
         try:
             #it is stupid that oss_api uses  fp.seek(os.SEEK_SET, os.SEEK_END)
             #here, write the content to a local file to workaround
@@ -89,6 +102,7 @@ class Storage(driver.Base):
             logger.error("unable to read from a given socket %s", err)
 
     def stream_read(self, path):
+        path = self.getfullpath(path)
         logger.debug("read from %s", path)
         if not self.exists(path):
             raise exceptions.FileNotFoundError(
@@ -96,19 +110,19 @@ class Storage(driver.Base):
 
         res = self._oss.get_object(self.osscfg.bucket, path)
         if res.status == 200:
-            block = res.read(self.osscfg.buffer_size)
+            block = res.read(self.buffer_size)
             yield block
         else:
             raise IOError('read %s failed, status: %s' % (path, res.status))
 
     def list_directory(self, path=None):
-        if path is None:  # pragma: no cover
-            path = ""
+        path = self.getfullpath(path)
         objectList = self._oss.list_objects(self.osscfg.bucket, path)
         for item in objectList:
             yield item
 
     def exists(self, path):
+        path = self.getfullpath(path)
         logger.debug("Check existance of %s", path)
         try:
             # read is used instead of lookup
@@ -123,6 +137,7 @@ class Storage(driver.Base):
 
     @lru.remove
     def remove(self, path):
+        path = self.getfullpath(path)
         try:
             for subdir in self.list_directory(path):
                 self._oss.delete_object(self.osscfg.bucket, subdir)
@@ -131,6 +146,7 @@ class Storage(driver.Base):
         self._oss.delete_object(self.osscfg.bucket, path)
 
     def get_size(self, path):
+        path = self.getfullpath(path)
         logger.debug("get_size of %s", path)
         headers = {}
         r = self._oss.head_object(self.osscfg.bucket, path, headers)
