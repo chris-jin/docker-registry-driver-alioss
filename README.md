@@ -40,13 +40,15 @@ When you run docker-registry, you can use the following two methods to configure
 
     * if you run docker-registry on your local host, export these configurations if you want to modify the default value in the configured in the config.yml:
         export SETTINGS_FLAVOR=oss
-        export OSS_BUCKET=docker-registry
+        export STORAGE_PATH=<the prefix of the storage path>
+        export OSS_BUCKET=<your oss bucket>
         export OSS_KEY=<your access id>
         export OSS_SECRET=<your access key>
     
     * if you run docker-registry on your docker container, remmeber to specify these settings as cmd args:
         docker run \
          -e SETTINGS_FLAVOR=oss \
+         -e STORAGE_PATH=/dockerregistry/ \
          -e OSS_BUCKET=docker-registry \
          -e OSS_KEY=<your access id> \
          -e OSS_SECRET=<your access key> \
