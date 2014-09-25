@@ -12,6 +12,8 @@ import os
 import logging
 
 import oss.oss_api as oss
+from oss.oss_xml_handler import GetInitUploadIdXml
+from oss.oss_util import get_part_xml, convert_header2map, safe_get_element
 
 from docker_registry.core import driver
 from docker_registry.core import exceptions
@@ -40,7 +42,7 @@ class Storage(driver.Base):
         # Turn on streaming support
         self.supports_bytes_range = True
         # Increase buffer size up to 640 Kb
-        self.buffer_size = 128 * 1024
+        self.buffer_size = 2 * 1024 * 1024
         #another stupid bug, oss api wont write an absolute path('/a/b/c'), neither throws any exception
         self._rootpath = path if path[0] != '/' else path[1:]
 
@@ -85,23 +87,44 @@ class Storage(driver.Base):
     def stream_write(self, path, fp):
         path = self.getfullpath(path)
         try:
-            #it is stupid that oss_api uses  fp.seek(os.SEEK_SET, os.SEEK_END)
-            #here, write the content to a local file to workaround
-            import tempfile
-            temp = tempfile.NamedTemporaryFile()
+            logger.debug('init_multi_upload ing...')
+            upload_id = ""
+            res = self._oss.init_multi_upload(self.osscfg.bucket, path, None)
+            if res.status != 200:
+                logger.debug('init_multi_upload failed')
+                raise IOError("Can not initialize uploading to oss")
+
+            logger.debug('init_multi_upload suceeded')
+            body = res.read()
+            h = GetInitUploadIdXml(body)
+            upload_id = h.upload_id
+
+            part_number = 1
             l = fp.read(self.buffer_size)
-            logger.debug('stream_write, begin to write the content to tmpfile')
+            logger.debug('stream_write, begin to write the content to oss')
             while len(l) > 0:
-                temp.write(l)
+                res = self._oss.upload_part_from_string(self.osscfg.bucket, path, l, upload_id, '%s' % part_number)
+                if (res.status / 100) == 2:
+                    logger.info('write part %s to %s on oss succeeded' % (part_number, path))
+                else:
+                    msg = 'write part %s to %s on oss failed' % (part_number, path)
+                    logger.error(msg)
+                    raise IOError(msg)
+                part_number += 1
                 l = fp.read(self.buffer_size)
-            logger.debug('stream_write, wrote the content to tmpfile done')
-            temp.seek(0)
-            self._oss.put_object_from_fp(self.osscfg.bucket, path, temp)
-            temp.close()
+            #complete the upload
+            part_msg_xml = get_part_xml(self._oss, self.osscfg.bucket, path, upload_id)
+            res = self._oss.complete_upload(self.osscfg.bucket, path, upload_id, part_msg_xml)
+            if (res.status / 100) == 2:
+                logger.info('stream write to %s finished' % path)
+            else:
+                msg = 'write to %s on oss failed' % path
+                logger.error(msg)
+                raise IOError(msg)
         except IOError as err:
             logger.error("unable to read from a given socket %s", err)
 
-    def stream_read(self, path):
+    def stream_read(self, path, bytes_range=None):
         path = self.getfullpath(path)
         logger.debug("read from %s", path)
         if not self.exists(path):
@@ -159,15 +182,3 @@ class Storage(driver.Base):
         logger.debug("size of %s = %d", path, size)
         return size
 
-
-def safe_get_element(name, container):
-    for k, v in container.items():
-        if k.strip().lower() == name.strip().lower():
-            return v
-    return ""
-
-def convert_header2map(header_list):
-    header_map = {}
-    for (a, b) in header_list:
-        header_map[a] = b
-    return header_map
