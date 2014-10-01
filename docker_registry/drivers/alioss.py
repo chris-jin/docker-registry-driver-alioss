@@ -134,7 +134,9 @@ class Storage(driver.Base):
         res = self._oss.get_object(self.osscfg.bucket, path)
         if res.status == 200:
             block = res.read(self.buffer_size)
-            yield block
+            while len(block) > 0:
+                yield block
+                block = res.read(self.buffer_size)
         else:
             raise IOError('read %s failed, status: %s' % (path, res.status))
 
