@@ -178,7 +178,7 @@ class Storage(driver.Base):
                 "Unable to get size of %s" % path)
 
         header_map = convert_header2map(r.getheaders())
-        size = safe_get_element("content_length", header_map)
+        size = safe_get_element("content-length", header_map)
         logger.debug("size of %s = %d", path, size)
         return size
 
