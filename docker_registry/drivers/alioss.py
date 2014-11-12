@@ -76,6 +76,12 @@ class Storage(driver.Base):
         except Exception:
             raise exceptions.FileNotFoundError("File not found %s" % path)
 
+    def content_redirect_url(self, path):
+	# set environment variable STORAGE_REDIRECT to true to enable this.
+        path = self.getfullpath(path)
+	url = "http://%s.%s/%s" % (self.osscfg.bucket, self.osscfg.host, path)
+        return url
+
     @lru.set
     def put_content(self, path, content):
         tmppath = path
