@@ -23,6 +23,7 @@ You should add all the following configurations to your main docker-registry con
         * oss_bucket: specify the bucket where you want to store these images for your registry
         * oss_accessid: the access id for the oss bucket, which you get from aliyun.com
         * oss_accesskey: the access key for the oss bucket, which you get from aliyun.com
+        * oss_host: oss host, typically, you don't need to care about it. In case that you need to use this registry with internal ip, you may need to change it.
 
     example <you can copy this example into your config.yml, and modify it accordingly>:
     
@@ -33,6 +34,7 @@ You should add all the following configurations to your main docker-registry con
         oss_bucket: _env:OSS_BUCKET[:default_value]
         oss_accessid: _env:OSS_KEY[:your_access_id]
         oss_accesskey: _env:OSS_SECRET[:your_access_key]
+        oss_host: _env:OSS_HOST[:your_oss_host]
 
 Options
 =========
@@ -44,6 +46,7 @@ When you run docker-registry, you can use the following two methods to configure
         export OSS_BUCKET=<your oss bucket>
         export OSS_KEY=<your access id>
         export OSS_SECRET=<your access key>
+        export OSS_HOST=<your oss host>
     
     * if you run docker-registry on your docker container, remmeber to specify these settings as cmd args:
         docker run \
@@ -52,6 +55,7 @@ When you run docker-registry, you can use the following two methods to configure
          -e OSS_BUCKET=docker-registry \
          -e OSS_KEY=<your access id> \
          -e OSS_SECRET=<your access key> \
+         -e OSS_HOST=<your oss host> \
          -e SEARCH_BACKEND=sqlalchemy \
          -p 5000:5000 \
          registry
